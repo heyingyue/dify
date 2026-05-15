@@ -1,21 +1,22 @@
-import type { TFunction } from 'i18next'
 import type { CategoryKey, TagKey } from './constants'
+import type { PluginDetail } from './types'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 import {
   categoryKeys,
   tagKeys,
 } from './constants'
-import { PluginCategoryEnum } from './types'
+import { PluginCategoryEnum, PluginSource } from './types'
 
 export type Tag = {
   name: TagKey
   label: string
 }
 
-export const useTags = (translateFromOut?: TFunction) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
+export const useTags = () => {
+  const { t } = useTranslation()
 
   const tags = useMemo(() => {
     return tagKeys.map((tag) => {
@@ -53,9 +54,8 @@ type Category = {
   label: string
 }
 
-export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
+export const useCategories = (isSingle?: boolean) => {
+  const { t } = useTranslation()
 
   const categories = useMemo(() => {
     return categoryKeys.map((category) => {
@@ -97,4 +97,40 @@ export const usePluginPageTabs = () => {
     { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('menus.exploreMarketplace', { ns: 'common' }) },
   ]
   return tabs
+}
+
+const EMPTY_PLUGINS: PluginDetail[] = []
+
+export function usePluginsWithLatestVersion(plugins: PluginDetail[] = EMPTY_PLUGINS): PluginDetail[] {
+  const marketplacePluginIds = useMemo(
+    () => plugins
+      .filter(p => p.source === PluginSource.marketplace)
+      .map(p => p.plugin_id),
+    [plugins],
+  )
+
+  const { data: latestVersionData } = useQuery(consoleQuery.plugins.latestVersions.queryOptions({
+    input: { body: { plugin_ids: marketplacePluginIds } },
+    enabled: !!marketplacePluginIds.length,
+  }))
+
+  return useMemo(() => {
+    const versions = latestVersionData?.versions
+    if (!versions)
+      return plugins
+
+    return plugins.map((plugin) => {
+      const info = versions[plugin.plugin_id]
+      if (!info)
+        return plugin
+      return {
+        ...plugin,
+        latest_version: info.version,
+        latest_unique_identifier: info.unique_identifier,
+        status: info.status,
+        deprecated_reason: info.deprecated_reason,
+        alternative_plugin_id: info.alternative_plugin_id,
+      }
+    })
+  }, [plugins, latestVersionData])
 }

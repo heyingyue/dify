@@ -1,6 +1,7 @@
 import type { Plan, UsagePlanInfo } from '@/app/components/billing/type'
 import type { ProviderContextState } from '@/context/provider-context'
-import { merge, noop } from 'es-toolkit/compat'
+import { merge } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
 
 // Avoid being mocked in tests
@@ -12,6 +13,7 @@ export const baseProviderContextValue: ProviderContextState = {
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -34,6 +36,7 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
 }
 
 export const createMockProviderContextValue = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => {

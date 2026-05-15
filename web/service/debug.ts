@@ -1,10 +1,9 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
 
-export type BasicAppFirstRes = {
+type BasicAppFirstRes = {
   prompt: string
   variables: string[]
   opening_statement: string
@@ -17,30 +16,6 @@ export type GenRes = {
   variables?: string[] // only for basic app first time rule
   opening_statement?: string // only for basic app first time rule
   error?: string
-}
-
-export type CodeGenRes = {
-  code: string
-  language: string[]
-  error?: string
-}
-
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onFile: IOnFile
-  onThought: IOnThought
-  onMessageEnd: IOnMessageEnd
-  onMessageReplace: IOnMessageReplace
-  onError: IOnError
-  getAbortController?: (abortController: AbortController) => void
-}) => {
-  return ssePost(`apps/${appId}/chat-messages`, {
-    body: {
-      ...body,
-      response_mode: 'streaming',
-    },
-  }, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
@@ -91,14 +66,6 @@ export const generateRule = (body: Record<string, any>) => {
   return post<GenRes>('/instruction-generate', {
     body,
   })
-}
-
-export const fetchModelParams = (providerName: string, modelId: string) => {
-  return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
-    params: {
-      model: modelId,
-    },
-  }) as Promise<{ data: ModelParameterRule[] }>
 }
 
 export const fetchPromptTemplate = ({

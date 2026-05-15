@@ -13,15 +13,20 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import {
   createParser,
-  parseAsArrayOf,
-  parseAsString,
+  parseAsStringEnum,
+  parseAsStringLiteral,
   useQueryState,
   useQueryStates,
 } from 'nuqs'
 import { useCallback } from 'react'
-import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
+import {
+  ACCOUNT_SETTING_MODAL_ACTION,
+  ACCOUNT_SETTING_TAB,
+} from '@/app/components/header/account-setting/constants'
+import { isServer } from '@/utils/client'
 
 /**
  * Modal State Query Parameters
@@ -52,6 +57,10 @@ export function usePricingModal() {
   )
 }
 
+const accountSettingTabValues = Object.values(ACCOUNT_SETTING_TAB) as AccountSettingTab[]
+const parseAsAccountSettingAction = parseAsStringLiteral([ACCOUNT_SETTING_MODAL_ACTION] as const)
+const parseAsAccountSettingTab = parseAsStringEnum<AccountSettingTab>(accountSettingTabValues)
+
 /**
  * Hook to manage account setting modal state via URL
  * @returns [state, setState] - Object with isOpen + payload (tab) and setter
@@ -61,11 +70,11 @@ export function usePricingModal() {
  * setAccountModalState({ payload: 'billing' }) // Sets ?action=showSettings&tab=billing
  * setAccountModalState(null) // Removes both params
  */
-export function useAccountSettingModal<T extends string = string>() {
+export function useAccountSettingModal() {
   const [accountState, setAccountState] = useQueryStates(
     {
-      action: parseAsString,
-      tab: parseAsString,
+      action: parseAsAccountSettingAction,
+      tab: parseAsAccountSettingTab,
     },
     {
       history: 'replace',
@@ -73,7 +82,7 @@ export function useAccountSettingModal<T extends string = string>() {
   )
 
   const setState = useCallback(
-    (state: { payload: T } | null) => {
+    (state: { payload: AccountSettingTab } | null) => {
       if (!state) {
         setAccountState({ action: null, tab: null }, { history: 'replace' })
         return
@@ -88,42 +97,9 @@ export function useAccountSettingModal<T extends string = string>() {
   )
 
   const isOpen = accountState.action === ACCOUNT_SETTING_MODAL_ACTION
-  const currentTab = (isOpen ? accountState.tab : null) as T | null
+  const currentTab = isOpen ? accountState.tab : null
 
   return [{ isOpen, payload: currentTab }, setState] as const
-}
-
-/**
- * Marketplace Search Query Parameters
- */
-export type MarketplaceFilters = {
-  q: string // search query
-  category: string // plugin category
-  tags: string[] // array of tags
-}
-
-/**
- * Hook to manage marketplace search/filter state via URL
- * Provides atomic updates - all params update together
- *
- * @example
- * const [filters, setFilters] = useMarketplaceFilters()
- * setFilters({ q: 'search', category: 'tool', tags: ['ai'] }) // Updates all at once
- * setFilters({ q: '' }) // Only updates q, keeps others
- * setFilters(null) // Clears all marketplace params
- */
-export function useMarketplaceFilters() {
-  return useQueryStates(
-    {
-      q: parseAsString.withDefault(''),
-      category: parseAsString.withDefault('all').withOptions({ clearOnDefault: false }),
-      tags: parseAsArrayOf(parseAsString).withDefault([]),
-    },
-    {
-      // Update URL without pushing to history (replaceState behavior)
-      history: 'replace',
-    },
-  )
 }
 
 /**
@@ -210,7 +186,7 @@ export function usePluginInstallation() {
  * clearQueryParams(['param1', 'param2'])
  */
 export function clearQueryParams(keys: string | string[]) {
-  if (typeof window === 'undefined')
+  if (isServer)
     return
 
   const url = new URL(window.location.href)

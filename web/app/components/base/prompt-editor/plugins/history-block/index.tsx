@@ -1,7 +1,7 @@
 import type { HistoryBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
@@ -22,13 +22,6 @@ export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_
 export type RoleName = {
   user: string
   assistant: string
-}
-
-export type HistoryBlockProps = {
-  roleName: RoleName
-  onEditRole: () => void
-  onInsert?: () => void
-  onDelete?: () => void
 }
 
 const HistoryBlock = memo(({

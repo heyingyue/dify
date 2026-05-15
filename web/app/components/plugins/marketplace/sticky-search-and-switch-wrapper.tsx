@@ -1,19 +1,15 @@
 'use client'
 
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import PluginTypeSwitch from './plugin-type-switch'
 import SearchBoxWrapper from './search-box/search-box-wrapper'
 
 type StickySearchAndSwitchWrapperProps = {
-  locale?: string
   pluginTypeSwitchClassName?: string
-  showSearchParams?: boolean
 }
 
 const StickySearchAndSwitchWrapper = ({
-  locale,
   pluginTypeSwitchClassName,
-  showSearchParams,
 }: StickySearchAndSwitchWrapperProps) => {
   const hasCustomTopClass = pluginTypeSwitchClassName?.includes('top-')
 
@@ -25,11 +21,8 @@ const StickySearchAndSwitchWrapper = ({
         pluginTypeSwitchClassName,
       )}
     >
-      <SearchBoxWrapper locale={locale} />
-      <PluginTypeSwitch
-        locale={locale}
-        showSearchParams={showSearchParams}
-      />
+      <SearchBoxWrapper />
+      <PluginTypeSwitch />
     </div>
   )
 }

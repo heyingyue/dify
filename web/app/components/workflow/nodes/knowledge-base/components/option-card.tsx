@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -13,7 +14,6 @@ import {
   OptionCardEffectTeal,
 } from '@/app/components/base/icons/src/public/knowledge'
 import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
-import { cn } from '@/utils/classnames'
 
 const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
   'blue': <OptionCardEffectBlue />,
@@ -65,7 +65,7 @@ const OptionCard = memo(({
     if (effectColor) {
       return (
         <div className={cn(
-          'absolute left-[-2px] top-[-2px] hidden h-14 w-14 rounded-full',
+          'absolute top-[-2px] left-[-2px] hidden h-14 w-14 rounded-full',
           'group-hover:block',
           isActive && 'block',
         )}
@@ -100,15 +100,15 @@ const OptionCard = memo(({
       >
         {effectElement}
         {
-          icon && (
+          !!icon && (
             <div className="mr-1 flex h-[18px] w-[18px] shrink-0 items-center justify-center">
               {typeof icon === 'function' ? icon(isActive) : icon}
             </div>
           )
         }
-        <div className="grow py-1 pt-[1px]">
+        <div className="grow py-1 pt-px">
           <div className="flex items-center">
-            <div className="system-sm-medium flex grow items-center text-text-secondary">
+            <div className="flex grow items-center system-sm-medium text-text-secondary">
               {title}
               {
                 isRecommended && (
@@ -131,7 +131,7 @@ const OptionCard = memo(({
           </div>
           {
             description && (
-              <div className="system-xs-regular mt-1 text-text-tertiary">
+              <div className="mt-1 system-xs-regular text-text-tertiary">
                 {description}
               </div>
             )
@@ -139,9 +139,9 @@ const OptionCard = memo(({
         </div>
       </div>
       {
-        children && isActive && (
+        !!(children && isActive) && (
           <div className="relative rounded-b-xl bg-components-panel-bg p-3">
-            <ArrowShape className="absolute left-[14px] top-[-11px] h-4 w-4 text-components-panel-bg" />
+            <ArrowShape className="absolute top-[-11px] left-[14px] h-4 w-4 text-components-panel-bg" />
             {children}
           </div>
         )

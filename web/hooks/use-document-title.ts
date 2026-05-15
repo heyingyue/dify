@@ -1,12 +1,14 @@
 'use client'
+import { useQuery } from '@tanstack/react-query'
 import { useFavicon, useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { defaultSystemFeatures } from '@/types/feature'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
-  const isPending = useGlobalPublicStore(s => s.isGlobalPending)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data, isPending } = useQuery(systemFeaturesQueryOptions())
+  const systemFeatures = data ?? defaultSystemFeatures
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''
   let favicon = ''

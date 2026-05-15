@@ -1,4 +1,4 @@
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   createContext,
   useContext,
@@ -30,7 +30,7 @@ export const VisualEditorContextProvider = ({ children }: VisualEditorProviderPr
   )
 }
 
-export const MittContext = createContext<ReturnType<typeof useMitt>>({
+const MittContext = createContext<ReturnType<typeof useMitt>>({
   emit: noop,
   useSubscribe: noop,
 })

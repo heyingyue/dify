@@ -1,7 +1,12 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
+import type { InputValueTypes } from '../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -9,26 +14,22 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 
-export type IRunOnceProps = {
+type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
-  inputs: Record<string, any>
-  inputsRef: React.RefObject<Record<string, any>>
-  onInputsChange: (inputs: Record<string, any>) => void
+  inputs: Record<string, InputValueTypes>
+  inputsRef: React.RefObject<Record<string, InputValueTypes>>
+  onInputsChange: (inputs: Record<string, InputValueTypes>) => void
   onSend: () => void
   visionConfig: VisionSettings
   onVisionFilesChange: (files: VisionFile[]) => void
@@ -53,7 +54,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   const [isInitialized, setIsInitialized] = useState(false)
 
   const onClear = () => {
-    const newInputs: Record<string, any> = {}
+    const newInputs: Record<string, InputValueTypes> = {}
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = ''
@@ -119,7 +120,7 @@ const RunOnce: FC<IRunOnceProps> = ({
             : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
                 <div className="mt-4 w-full" key={item.key}>
                   {item.type !== 'checkbox' && (
-                    <div className="system-md-semibold flex h-6 items-center gap-1 text-text-secondary">
+                    <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
                       <div className="truncate">{item.name}</div>
                       {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
@@ -127,27 +128,40 @@ const RunOnce: FC<IRunOnceProps> = ({
                   <div className="mt-1">
                     {item.type === 'select' && (
                       <Select
-                        className="w-full"
-                        defaultValue={inputs[item.key]}
-                        onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
-                        items={(item.options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                      />
+                        value={inputs[item.key] ? String(inputs[item.key]) : null}
+                        onValueChange={(nextValue) => {
+                          if (!nextValue)
+                            return
+                          handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          {String(inputs[item.key] || item.default || t('placeholder.select', { ns: 'common' }))}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(item.options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {item.type === 'string' && (
                       <Input
                         type="text"
                         placeholder={item.name}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as string}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                        maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                        maxLength={item.max_length}
                       />
                     )}
                     {item.type === 'paragraph' && (
                       <Textarea
                         className="h-[104px] sm:text-xs"
                         placeholder={item.name}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as string}
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                       />
                     )}
@@ -155,21 +169,23 @@ const RunOnce: FC<IRunOnceProps> = ({
                       <Input
                         type="number"
                         placeholder={item.name}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as number}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                       />
                     )}
                     {item.type === 'checkbox' && (
                       <BoolInput
                         name={item.name || item.key}
-                        value={!!inputs[item.key]}
+                        value={!!inputs[item.key] as boolean}
                         required={item.required}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                       />
                     )}
                     {item.type === 'file' && (
                       <FileUploaderInAttachmentWrapper
-                        value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                        value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
+                          ? [inputs[item.key] as FileEntity]
+                          : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                         fileConfig={{
                           ...item.config,
@@ -179,10 +195,11 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file-list' && (
                       <FileUploaderInAttachmentWrapper
-                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{
                           ...item.config,
+                          // eslint-disable-next-line ts/no-explicit-any
                           fileUploadConfig: (visionConfig as any).fileUploadConfig,
                         }}
                       />
@@ -190,12 +207,12 @@ const RunOnce: FC<IRunOnceProps> = ({
                     {item.type === 'json_object' && (
                       <CodeEditor
                         language={CodeLanguage.json}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as string}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                         noWrapper
                         className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                         placeholder={
-                          <div className="whitespace-pre">{item.json_schema}</div>
+                          <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }
                       />
                     )}
@@ -205,7 +222,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
-                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="flex h-6 items-center system-md-semibold text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
                 <div className="mt-1">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -220,7 +237,7 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <div className="mb-3 mt-6 w-full">
+          <div className="mt-6 mb-3 w-full">
             <div className="flex items-center justify-between gap-2">
               <Button
                 onClick={onClear}
@@ -234,7 +251,6 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
                 onClick={handlePrimaryClick}
-                data-testid={isRunning ? 'stop-button' : 'run-button'}
               >
                 {isRunning
                   ? (

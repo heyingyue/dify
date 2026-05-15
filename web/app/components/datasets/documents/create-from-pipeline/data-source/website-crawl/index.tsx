@@ -31,7 +31,7 @@ import Options from './base/options'
 
 const I18N_PREFIX = 'stepOne.website'
 
-export type WebsiteCrawlProps = {
+type WebsiteCrawlProps = {
   nodeId: string
   nodeData: DataSourceNodeType
   onCredentialChange: (credentialId: string) => void
@@ -158,7 +158,7 @@ const WebsiteCrawl = ({
     <div className="flex flex-col">
       <Header
         docTitle="Docs"
-        docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
+        docLink={docLink('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}

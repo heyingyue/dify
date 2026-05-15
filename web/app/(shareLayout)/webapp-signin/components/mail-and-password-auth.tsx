@@ -1,18 +1,19 @@
 'use client'
-import { noop } from 'es-toolkit/compat'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import { encryptPassword } from '@/utils/encryption'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -45,33 +46,27 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const appCode = getAppCodeFromRedirectUrl()
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
     if (!redirectUrl || !appCode) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.redirectUrlMissing', { ns: 'login' }),
-      })
+      toast.error(t('error.redirectUrlMissing', { ns: 'login' }))
       return
     }
     try {
       setIsLoading(true)
       const loginData: Record<string, any> = {
         email,
-        password,
+        password: encryptPassword(password),
         language: locale,
         remember_me: true,
       }
@@ -81,7 +76,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
-        setWebAppAccessToken(res.data.access_token)
+        if (res?.data?.access_token) {
+          setWebAppAccessToken(res.data.access_token)
+        }
 
         const { access_token } = await fetchAccessToken({
           appCode: appCode!,
@@ -91,15 +88,12 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (e: any) {
       if (e.code === 'authentication_failed')
-        Toast.notify({ type: 'error', message: e.message })
+        toast.error(e.message)
     }
     finally {
       setIsLoading(false)
@@ -109,7 +103,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   return (
     <form onSubmit={noop}>
       <div className="mb-3">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">

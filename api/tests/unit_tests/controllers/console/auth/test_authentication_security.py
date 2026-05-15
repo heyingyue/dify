@@ -34,7 +34,7 @@ class TestAuthenticationSecurity:
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_invalid_email_with_registration_allowed(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_features, mock_db
     ):
@@ -43,7 +43,6 @@ class TestAuthenticationSecurity:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = services.errors.account.AccountPasswordError("Invalid email or password.")
-        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
         mock_features.return_value.is_allow_register = True
 
         # Act
@@ -67,7 +66,7 @@ class TestAuthenticationSecurity:
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_wrong_password_returns_error(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_db
     ):
@@ -76,7 +75,6 @@ class TestAuthenticationSecurity:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = services.errors.account.AccountPasswordError("Wrong password")
-        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
 
         # Act
         with self.app.test_request_context(
@@ -100,7 +98,7 @@ class TestAuthenticationSecurity:
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_invalid_email_with_registration_disabled(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_features, mock_db
     ):
@@ -109,7 +107,6 @@ class TestAuthenticationSecurity:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = services.errors.account.AccountPasswordError("Invalid email or password.")
-        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
         mock_features.return_value.is_allow_register = False
 
         # Act
@@ -135,7 +132,6 @@ class TestAuthenticationSecurity:
     def test_reset_password_with_existing_account(self, mock_send_email, mock_get_user, mock_features, mock_db):
         """Test that reset password returns success with token for existing accounts."""
         # Mock the setup check
-        mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
 
         # Test with existing account
         mock_get_user.return_value = MagicMock(email="existing@example.com")

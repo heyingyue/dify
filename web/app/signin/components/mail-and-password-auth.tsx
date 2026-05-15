@@ -1,16 +1,17 @@
 import type { ResponseError } from '@/service/fetch'
-import { noop } from 'es-toolkit/compat'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { login } from '@/service/common'
+import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
@@ -34,18 +35,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
@@ -64,7 +62,10 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
-        // Track login success event
+        if (res?.data?.access_token) {
+          // Track login success event
+          setWebAppAccessToken(res.data.access_token)
+        }
         trackEvent('user_login_success', {
           method: 'email_password',
           is_invite: isInvite,
@@ -79,18 +80,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         }
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {
       if ((error as ResponseError).code === 'authentication_failed') {
-        Toast.notify({
-          type: 'error',
-          message: t('error.invalidEmailOrPassword', { ns: 'login' }),
-        })
+        toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
       }
     }
     finally {
@@ -101,7 +96,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   return (
     <form onSubmit={noop}>
       <div className="mb-3">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">

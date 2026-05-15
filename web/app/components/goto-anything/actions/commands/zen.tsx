@@ -1,19 +1,19 @@
 import type { SlashCommandHandler } from './types'
 import { RiFullscreenLine } from '@remixicon/react'
 import * as React from 'react'
+import { getI18n } from 'react-i18next'
 import { isInWorkflowPage } from '@/app/components/workflow/constants'
-import i18n from '@/i18n-config/i18next-config'
+import {
+  emitWorkflowCommand,
+  WorkflowCommand,
+} from '@/app/components/workflow/shortcuts/commands'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Zen command dependency types - no external dependencies needed
 type ZenDeps = Record<string, never>
 
-// Custom event name for zen toggle
-export const ZEN_TOGGLE_EVENT = 'zen-toggle-maximize'
-
-// Shared function to dispatch zen toggle event
 const toggleZenMode = () => {
-  window.dispatchEvent(new CustomEvent(ZEN_TOGGLE_EVENT))
+  emitWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize)
 }
 
 /**
@@ -32,6 +32,7 @@ export const zenCommand: SlashCommandHandler<ZenDeps> = {
   execute: toggleZenMode,
 
   async search(_args: string, locale: string = 'en') {
+    const i18n = getI18n()
     return [{
       id: 'zen',
       title: i18n.t('gotoAnything.actions.zenTitle', { ns: 'app', lng: locale }) || 'Zen Mode',

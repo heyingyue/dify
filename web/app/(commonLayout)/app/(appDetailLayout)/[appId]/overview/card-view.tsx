@@ -5,19 +5,19 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -28,7 +28,7 @@ import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
 
-export type ICardViewProps = {
+type ICardViewProps = {
   appId: string
   isInPanel?: boolean
   className?: string
@@ -36,8 +36,6 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
-  const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
@@ -59,23 +57,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
   const disableAppCards = !shouldRenderAppCards
 
-  const triggerDocUrl = docLink('/guides/workflow/node/start')
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
         {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
       </div>
-      <div
-        className="cursor-pointer text-xs font-medium text-text-accent hover:underline"
-        onClick={(event) => {
-          event.stopPropagation()
-          window.open(triggerDocUrl, '_blank')
-        }}
-      >
-        {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
-      </div>
     </div>
-  ), [t, triggerDocUrl])
+  ), [t])
 
   const disableWebAppTooltip = disableAppCards
     ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))
@@ -87,27 +75,55 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
-  const updateAppDetail = async () => {
+  const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
       setAppDetail({ ...res })
     }
-    catch (error) { console.error(error) }
-  }
+    catch (error) {
+      console.error(error)
+    }
+  }, [appId, setAppDetail])
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
 
-    if (type === 'success')
+    if (type === 'success') {
       updateAppDetail()
 
-    notify({
-      type,
-      message: t(`actionMsg.${message}`, { ns: 'common' }) as string,
-    })
+      // Emit collaboration event to notify other clients of app state changes
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'app_state_update',
+          data: { timestamp: Date.now() },
+          timestamp: Date.now(),
+        })
+      }
+    }
+
+    toast(t(`actionMsg.${message}`, { ns: 'common' }) as string, { type })
   }
+
+  // Listen for collaborative app state updates from other clients
+  useEffect(() => {
+    if (!appId)
+      return
+
+    const unsubscribe = collaborationManager.onAppStateUpdate(async () => {
+      try {
+        // Update app detail when other clients modify app state
+        await updateAppDetail()
+      }
+      catch (error) {
+        console.error('app state update failed:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId, updateAppDetail])
 
   const onChangeSiteStatus = async (value: boolean) => {
     const [err] = await asyncRunSafe<App>(

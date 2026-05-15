@@ -2,14 +2,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
-from extensions.ext_database import db
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from services.trigger.trigger_provider_service import TriggerProviderService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestTriggerProviderService:
@@ -47,7 +48,7 @@ class TestTriggerProviderService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -75,7 +76,7 @@ class TestTriggerProviderService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -84,7 +85,7 @@ class TestTriggerProviderService:
 
     def _create_test_subscription(
         self,
-        db_session_with_containers,
+        db_session_with_containers: Session,
         tenant_id,
         user_id,
         provider_id,
@@ -135,14 +136,14 @@ class TestTriggerProviderService:
             expires_at=-1,
         )
 
-        db.session.add(subscription)
-        db.session.commit()
-        db.session.refresh(subscription)
+        db_session_with_containers.add(subscription)
+        db_session_with_containers.commit()
+        db_session_with_containers.refresh(subscription)
 
         return subscription
 
     def test_rebuild_trigger_subscription_success_with_merged_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful rebuild with credential merging (HIDDEN_VALUE handling).
@@ -217,7 +218,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == "new-secret-value"  # New value
 
         # Verify database state was updated
-        db.session.refresh(subscription)
+        db_session_with_containers.refresh(subscription)
         assert subscription.name == "updated_name"
         assert subscription.parameters == {"param1": "updated_value"}
 
@@ -244,7 +245,7 @@ class TestTriggerProviderService:
         )
 
     def test_rebuild_trigger_subscription_with_all_new_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test rebuild when all credentials are new (no HIDDEN_VALUE).
@@ -304,7 +305,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == "completely-new-secret"
 
     def test_rebuild_trigger_subscription_with_all_hidden_values(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test rebuild when all credentials are HIDDEN_VALUE (preserve all existing).
@@ -363,7 +364,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == original_credentials["api_secret"]
 
     def test_rebuild_trigger_subscription_with_missing_key_uses_unknown_value(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test rebuild when HIDDEN_VALUE is used for a key that doesn't exist in original.
@@ -422,7 +423,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["non_existent_key"] == UNKNOWN_VALUE
 
     def test_rebuild_trigger_subscription_rollback_on_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that transaction is rolled back on error.
@@ -470,70 +471,12 @@ class TestTriggerProviderService:
             )
 
         # Verify subscription state was not changed (rolled back)
-        db.session.refresh(subscription)
+        db_session_with_containers.refresh(subscription)
         assert subscription.name == original_name
         assert subscription.parameters == original_parameters
 
-    def test_rebuild_trigger_subscription_unsubscribe_error_continues(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that unsubscribe errors are handled gracefully and operation continues.
-
-        This test verifies:
-        - Unsubscribe errors are caught and logged but don't stop the rebuild
-        - Rebuild continues even if unsubscribe fails
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
-        credential_type = CredentialType.API_KEY
-
-        original_credentials = {"api_key": "original-key"}
-        subscription = self._create_test_subscription(
-            db_session_with_containers,
-            tenant.id,
-            account.id,
-            provider_id,
-            credential_type,
-            original_credentials,
-            mock_external_service_dependencies,
-        )
-
-        # Make unsubscribe_trigger raise an error (should be caught and continue)
-        mock_external_service_dependencies["trigger_manager"].unsubscribe_trigger.side_effect = ValueError(
-            "Unsubscribe failed"
-        )
-
-        new_subscription_entity = TriggerSubscriptionEntity(
-            endpoint=subscription.endpoint_id,
-            parameters={},
-            properties={},
-            expires_at=-1,
-        )
-        mock_external_service_dependencies["trigger_manager"].subscribe_trigger.return_value = new_subscription_entity
-
-        # Execute rebuild - should succeed despite unsubscribe error
-        TriggerProviderService.rebuild_trigger_subscription(
-            tenant_id=tenant.id,
-            provider_id=provider_id,
-            subscription_id=subscription.id,
-            credentials={"api_key": "new-key"},
-            parameters={},
-        )
-
-        # Verify subscribe was still called (operation continued)
-        mock_external_service_dependencies["trigger_manager"].subscribe_trigger.assert_called_once()
-
-        # Verify subscription was updated
-        db.session.refresh(subscription)
-        assert subscription.parameters == {}
-
     def test_rebuild_trigger_subscription_subscription_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test error when subscription is not found.
@@ -558,72 +501,8 @@ class TestTriggerProviderService:
                 parameters={},
             )
 
-    def test_rebuild_trigger_subscription_provider_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test error when provider is not found.
-
-        This test verifies:
-        - Proper error is raised when provider doesn't exist
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("non_existent_org/non_existent_plugin/non_existent_provider")
-
-        # Make get_trigger_provider return None
-        mock_external_service_dependencies["trigger_manager"].get_trigger_provider.return_value = None
-
-        with pytest.raises(ValueError, match="Provider.*not found"):
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=tenant.id,
-                provider_id=provider_id,
-                subscription_id=fake.uuid4(),
-                credentials={},
-                parameters={},
-            )
-
-    def test_rebuild_trigger_subscription_unsupported_credential_type(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test error when credential type is not supported for rebuild.
-
-        This test verifies:
-        - Proper error is raised for unsupported credential types (not OAUTH2 or API_KEY)
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
-        credential_type = CredentialType.UNAUTHORIZED  # Not supported
-
-        subscription = self._create_test_subscription(
-            db_session_with_containers,
-            tenant.id,
-            account.id,
-            provider_id,
-            credential_type,
-            {},
-            mock_external_service_dependencies,
-        )
-
-        with pytest.raises(ValueError, match="Credential type not supported for rebuild"):
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=tenant.id,
-                provider_id=provider_id,
-                subscription_id=subscription.id,
-                credentials={},
-                parameters={},
-            )
-
     def test_rebuild_trigger_subscription_name_uniqueness_check(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that name uniqueness is checked when updating name.

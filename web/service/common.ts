@@ -34,12 +34,11 @@ import type {
   UserProfileOriginResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import type { SystemFeatures } from '@/types/feature'
 import { del, get, patch, post, put } from './base'
 
 type LoginSuccess = {
   result: 'success'
-  data: { access_token: string }
+  data?: { access_token?: string }
 }
 type LoginFail = {
   result: 'fail'
@@ -307,10 +306,6 @@ export const fetchSupportRetrievalMethods = (url: string): Promise<RetrievalMeth
   return get<RetrievalMethodsRes>(url)
 }
 
-export const getSystemFeatures = (): Promise<SystemFeatures> => {
-  return get<SystemFeatures>('/system-features')
-}
-
 export const enableModel = (url: string, body: { model: string, model_type: ModelTypeEnum }): Promise<CommonResponse> =>
   patch<CommonResponse>(url, { body })
 
@@ -344,7 +339,13 @@ export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: b
 export const sendEMailLoginCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string }> =>
   post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
 
-export const emailLoginWithCode = (data: { email: string, code: string, token: string, language: string }): Promise<LoginResponse> =>
+export const emailLoginWithCode = (data: {
+  email: string
+  code: string
+  token: string
+  language: string
+  timezone?: string
+}): Promise<LoginResponse> =>
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string, message?: string, code?: string }> =>
@@ -388,3 +389,8 @@ export const resetEmail = (body: { new_email: string, token: string }): Promise<
 
 export const checkEmailExisted = (body: { email: string }): Promise<CommonResponse> =>
   post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
+
+export const getAvatar = async ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> => {
+  const { consoleClient } = await import('./client')
+  return consoleClient.account.avatar({ query: { avatar } })
+}

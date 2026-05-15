@@ -2,12 +2,13 @@
 import type { FC } from 'react'
 import type { Props as EditorProps } from '.'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import { cn } from '@/utils/classnames'
 import Editor from '.'
 
 const TO_WINDOW_OFFSET = 8
@@ -109,7 +110,7 @@ const CodeEditor: FC<Props> = ({
     }
     const varName = varValue.slice(-1)[0]
     return {
-      name: getUniqVarName(varName),
+      name: getUniqVarName(varName!),
       isExist: false,
     }
   }
@@ -147,7 +148,7 @@ const CodeEditor: FC<Props> = ({
         onMount={onEditorMounted}
         placeholder={t('common.jinjaEditorPlaceholder', { ns: 'workflow' })!}
       />
-      {isShowVarPicker && (
+      {isShowVarPicker && createPortal(
         <div
           ref={popupRef}
           className="w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
@@ -164,7 +165,8 @@ const CodeEditor: FC<Props> = ({
             onChange={handleSelectVar}
             isSupportFileVar={false}
           />
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

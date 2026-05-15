@@ -1,8 +1,8 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
-import { cn } from '@/utils/classnames'
 import TagsFilter from './tags-filter'
 
 type SearchBoxProps = {
@@ -13,7 +13,6 @@ type SearchBoxProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
   placeholder?: string
-  locale?: string
   supportAddCustomTool?: boolean
   usedInMarketplace?: boolean
   onShowAddCustomCollectionModal?: () => void
@@ -28,7 +27,6 @@ const SearchBox = ({
   tags,
   onTagsChange,
   placeholder = '',
-  locale,
   usedInMarketplace = false,
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
@@ -36,10 +34,10 @@ const SearchBox = ({
 }: SearchBoxProps) => {
   return (
     <div
-      className={cn('z-[11] flex items-center', wrapperClassName)}
+      className={cn('z-11 flex items-center', wrapperClassName)}
     >
       <div className={
-        cn('flex items-center', usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md', !usedInMarketplace && 'radius-md border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover', inputClassName)
+        cn('flex items-center', usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md', !usedInMarketplace && 'rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover', inputClassName)
       }
       >
         {
@@ -49,13 +47,12 @@ const SearchBox = ({
                 tags={tags}
                 onTagsChange={onTagsChange}
                 usedInMarketplace
-                locale={locale}
               />
               <Divider type="vertical" className="mx-1 h-3.5" />
               <div className="flex grow items-center gap-x-2 p-1">
                 <input
                   className={cn(
-                    'body-md-medium inline-block grow appearance-none bg-transparent text-text-secondary outline-none',
+                    'inline-block grow appearance-none bg-transparent body-md-medium text-text-secondary outline-hidden',
                   )}
                   value={search}
                   onChange={(e) => {
@@ -80,12 +77,12 @@ const SearchBox = ({
         {
           !usedInMarketplace && (
             <>
-              <div className="flex grow items-center py-[7px] pl-2 pr-3">
+              <div className="flex grow items-center py-[7px] pr-3 pl-2">
                 <RiSearchLine className="size-4 text-components-input-text-placeholder" />
                 <input
                   autoFocus={autoFocus}
                   className={cn(
-                    'system-sm-regular ml-1.5 mr-1 inline-block grow appearance-none bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
+                    'mr-1 ml-1.5 inline-block grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
                     search && 'mr-2',
                   )}
                   value={search}
@@ -109,7 +106,6 @@ const SearchBox = ({
               <TagsFilter
                 tags={tags}
                 onTagsChange={onTagsChange}
-                locale={locale}
               />
             </>
           )

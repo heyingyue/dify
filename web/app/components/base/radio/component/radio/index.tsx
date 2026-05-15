@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useContext } from 'use-context-selector'
-import { cn } from '@/utils/classnames'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
 
@@ -52,7 +52,7 @@ export default function Radio({
       )}
       onClick={() => handleChange(value)}
     >
-      {children && (
+      {!!children && (
         <label
           className={
             cn(labelClassName, 'cursor-pointer text-sm')

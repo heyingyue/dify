@@ -1,27 +1,24 @@
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ReactNode } from 'react'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import {
   clearQueryParams,
   PRICING_MODAL_QUERY_PARAM,
   PRICING_MODAL_QUERY_VALUE,
   useAccountSettingModal,
-  useMarketplaceFilters,
   usePluginInstallation,
   usePricingModal,
 } from './use-query-params'
 
+// Mock isServer to allow runtime control in tests
+const mockIsServer = vi.hoisted(() => ({ value: false }))
+vi.mock('@/utils/client', () => ({
+  get isServer() { return mockIsServer.value },
+  get isClient() { return !mockIsServer.value },
+}))
+
 const renderWithAdapter = <T,>(hook: () => T, searchParams = '') => {
-  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      {children}
-    </NuqsTestingAdapter>
-  )
-  const { result } = renderHook(hook, { wrapper })
-  return { result, onUrlUpdate }
+  return renderHookWithNuqs(hook, { searchParams })
 }
 
 // Query param hooks: defaults, parsing, and URL sync behavior.
@@ -82,7 +79,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get(PRICING_MODAL_QUERY_PARAM)).toBe(PRICING_MODAL_QUERY_VALUE)
     })
 
@@ -97,7 +94,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -115,7 +112,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has(PRICING_MODAL_QUERY_PARAM)).toBe(false)
     })
 
@@ -133,7 +130,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -148,7 +145,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
   })
@@ -208,7 +205,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
       expect(update.searchParams.get('tab')).toBe('members')
     })
@@ -224,7 +221,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -242,7 +239,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('tab')).toBe('provider')
     })
 
@@ -260,7 +257,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
 
@@ -278,7 +275,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('action')).toBe(false)
       expect(update.searchParams.has('tab')).toBe(false)
     })
@@ -297,175 +294,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.options.history).toBe('replace')
-    })
-  })
-
-  // Marketplace filters query behavior.
-  describe('useMarketplaceFilters', () => {
-    it('should return default filters when query params are missing', () => {
-      // Arrange
-      const { result } = renderWithAdapter(() => useMarketplaceFilters())
-
-      // Act
-      const [filters] = result.current
-
-      // Assert
-      expect(filters.q).toBe('')
-      expect(filters.category).toBe('all')
-      expect(filters.tags).toEqual([])
-    })
-
-    it('should parse filters when query params are present', () => {
-      // Arrange
-      const { result } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?q=prompt&category=tool&tags=ai,ml',
-      )
-
-      // Act
-      const [filters] = result.current
-
-      // Assert
-      expect(filters.q).toBe('prompt')
-      expect(filters.category).toBe('tool')
-      expect(filters.tags).toEqual(['ai', 'ml'])
-    })
-
-    it('should treat empty tags param as empty array', () => {
-      // Arrange
-      const { result } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?tags=',
-      )
-
-      // Act
-      const [filters] = result.current
-
-      // Assert
-      expect(filters.tags).toEqual([])
-    })
-
-    it('should preserve other filters when updating a single field', async () => {
-      // Arrange
-      const { result } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?category=tool&tags=ai,ml',
-      )
-
-      // Act
-      act(() => {
-        result.current[1]({ q: 'search' })
-      })
-
-      // Assert
-      await waitFor(() => expect(result.current[0].q).toBe('search'))
-      expect(result.current[0].category).toBe('tool')
-      expect(result.current[0].tags).toEqual(['ai', 'ml'])
-    })
-
-    it('should clear q param when q is empty', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?q=search',
-      )
-
-      // Act
-      act(() => {
-        result.current[1]({ q: '' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.has('q')).toBe(false)
-    })
-
-    it('should serialize tags as comma-separated values', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(() => useMarketplaceFilters())
-
-      // Act
-      act(() => {
-        result.current[1]({ tags: ['ai', 'ml'] })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('tags')).toBe('ai,ml')
-    })
-
-    it('should remove tags param when list is empty', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?tags=ai,ml',
-      )
-
-      // Act
-      act(() => {
-        result.current[1]({ tags: [] })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.has('tags')).toBe(false)
-    })
-
-    it('should keep category in the URL when set to default', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?category=tool',
-      )
-
-      // Act
-      act(() => {
-        result.current[1]({ category: 'all' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('category')).toBe('all')
-    })
-
-    it('should clear all marketplace filters when set to null', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useMarketplaceFilters(),
-        '?q=search&category=tool&tags=ai,ml',
-      )
-
-      // Act
-      act(() => {
-        result.current[1](null)
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.has('q')).toBe(false)
-      expect(update.searchParams.has('category')).toBe(false)
-      expect(update.searchParams.has('tags')).toBe(false)
-    })
-
-    it('should use replace history when updating filters', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(() => useMarketplaceFilters())
-
-      // Act
-      act(() => {
-        result.current[1]({ q: 'search' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
   })
@@ -527,7 +356,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('package-ids')).toBe('["org/plugin"]')
     })
 
@@ -543,7 +372,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
 
@@ -562,7 +391,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('package-ids')).toBe(false)
       expect(update.searchParams.has('bundle-info')).toBe(false)
     })
@@ -582,7 +411,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
   })
@@ -597,6 +426,7 @@ describe('clearQueryParams', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    mockIsServer.value = false
   })
 
   it('should remove a single key when provided one key', () => {
@@ -632,13 +462,13 @@ describe('clearQueryParams', () => {
     replaceSpy.mockRestore()
   })
 
-  it('should no-op when window is undefined', () => {
+  it('should no-op when running on server', () => {
     // Arrange
     const replaceSpy = vi.spyOn(window.history, 'replaceState')
-    vi.stubGlobal('window', undefined)
+    mockIsServer.value = true
 
     // Act
-    expect(() => clearQueryParams('foo')).not.toThrow()
+    clearQueryParams('foo')
 
     // Assert
     expect(replaceSpy).not.toHaveBeenCalled()

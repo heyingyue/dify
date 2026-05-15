@@ -1,15 +1,14 @@
 import type { Tag } from '../../../hooks'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
-import { useMixedTranslation } from '../../hooks'
+import { useTranslation } from '#i18n'
 
 type MarketplaceTriggerProps = {
   selectedTagsLength: number
   open: boolean
   tags: string[]
   tagsMap: Record<string, Tag>
-  locale?: string
   onTagsChange: (tags: string[]) => void
 }
 
@@ -18,15 +17,14 @@ const MarketplaceTrigger = ({
   open,
   tags,
   tagsMap,
-  locale,
   onTagsChange,
 }: MarketplaceTriggerProps) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
 
   return (
     <div
       className={cn(
-        'flex h-8 cursor-pointer select-none items-center rounded-lg px-2 py-1 text-text-tertiary',
+        'flex h-8 cursor-pointer items-center rounded-lg px-2 py-1 text-text-tertiary select-none',
         !!selectedTagsLength && 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3',
         open && !selectedTagsLength && 'bg-state-base-hover',
       )}
@@ -34,14 +32,14 @@ const MarketplaceTrigger = ({
       <div className="p-0.5">
         <RiFilter3Line className={cn('size-4', !!selectedTagsLength && 'text-text-secondary')} />
       </div>
-      <div className="system-sm-medium flex items-center gap-x-1 p-1">
+      <div className="flex items-center gap-x-1 p-1 system-sm-medium">
         {
           !selectedTagsLength && <span>{t('allTags', { ns: 'pluginTags' })}</span>
         }
         {
           !!selectedTagsLength && (
             <span className="text-text-secondary">
-              {tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')}
+              {tags.map(tag => tagsMap[tag]!.label).slice(0, 2).join(',')}
             </span>
           )
         }
